@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Code</title>
+    <style>
+        .container {
+            display: grid;
+            place-items: center;
+        }
+    </style>
+</head>
+<body>
+    <div style="text-align: left;">
+        <a href="http://localhost:8080/index.html">Back</a>
+    </div>
+    <div style="text-align: center;">
+        <h1>Server Code</h1>
+    </div>
+    <hr>
+    <div class="container">
+        <pre>
+            <code class="language-python">
+                """HTTP Server"""
+                import random
+                from socket import *
+                from genericpath import isfile
+                
+                """create a socket and bind it to localhost and port 8080"""
+                serverSocket = socket(AF_INET, SOCK_STREAM)
+                serverSocket.bind(('localhost', 8080))
+                
+                """print IP address and port number to the console"""
+                print(f'Listening on {serverSocket.getsockname()}...')
+                print('Press Ctrl+C to close the server\r\n')
+                
+                """listen for connections"""
+                serverSocket.listen(5)
+                
+                """keep the server running until the user presses Ctrl+C"""
+                while True:
+                    try:
+                        """accept connections"""
+                        clientSocket, address = serverSocket.accept()
+                
+                        """parse the request into a list to easily identify keywords"""
+                        request = clientSocket.recv(10000).decode()
+                        request = request.split(' ')
+                
+                        """get the HTTP verb and the file name from the request"""
+                        try:
+                            httpVerb = request[0]
+                            fileName = request[1][1:]
+                            print(f'Request from localhost: {httpVerb} /{fileName} HTTP/1.1')
+                        except IndexError:
+                            clientSocket.send('HTTP/1.1 400 Bad Request\r\n\r\n'.encode())
+                            clientSocket.close()
+                            continue
+                
+                    except KeyboardInterrupt:
+                        """close the server socket"""
+                        print('\r\nServer closed\r\n')
+                        serverSocket.close()
+                        break
+                
+                    if httpVerb == 'GET':
+                        try:
+                            if isfile(fileName):
+                                clientSocket.send('HTTP/1.1 200 OK\r\n\r\n'.encode())
+                
+                                """open the requested file and read the file contents"""
+                                with open(fileName, 'r') as file: fileContents = file.read()
+                                clientSocket.send(fileContents.encode())
+                                print(f'File sent to the client: {fileName}\r\n')
+                                clientSocket.close()
+                
+                            else:
+                                clientSocket.send('HTTP/1.1 404 Not Found\r\n\r\n'.encode())
+                
+                                """open the index.html file and read the file contents"""
+                                with open('index.html', 'r') as file: fileContents = file.read()
+                                clientSocket.send(fileContents.encode())
+                                print(f'File sent to the client: index.html\r\n')
+                                clientSocket.close()
+                
+                        except:
+                            clientSocket.send('HTTP/1.1 500 Internal Server Error\r\n\r\n'.encode())
+                            clientSocket.close()
+                            continue
+                
+                    elif httpVerb == 'PUT':
+                        clientSocket.send('HTTP/1.1 200 OK\r\n\r\n'.encode())
+                
+                        """split the file name into the file name and the file extension"""
+                        fileName = fileName.split('.')
+                        fileExtension = fileName[1]
+                        fileName = fileName[0]
+                
+                        """create a new file name with a random number"""
+                        newClientFile = f'{fileName}({random.randint(0, 100000)}).{fileExtension}'
+                
+                        """recieve the file contents from the client"""
+                        fileContents = clientSocket.recv(10000).decode()
+                
+                        """write the file contents to the new file"""
+                        with open(newClientFile, 'w') as file: file.write(fileContents)
+                        print(f'File received from the client: {newClientFile}\r\n')
+                        clientSocket.close()
+                
+                    else:
+                        clientSocket.send('HTTP/1.1 405 Method Not Allowed\r\n\r\n'.encode())
+                        clientSocket.close()
+                        continue
+            </code>
+        </pre>  
+    </div>
+</body>
+</html>

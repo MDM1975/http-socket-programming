@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client Code</title>
+    <style>
+        .container {
+            display: grid;
+            place-items: center;
+        }
+    </style>
+</head>
+<body>
+    <div style="text-align: left;">
+        <a href="http://localhost:8080/index.html">Back</a>
+    </div>
+    <div style="text-align: center;">
+        <h1>Client Code</h1>
+    </div>
+    <hr>
+    <div class="container">
+        <pre>
+          <code class="language-python">
+            """HTTP Client"""
+            from socket import *
+            import random
+            import sys
+            from genericpath import isfile
+
+            """create a socket"""
+            clientSocket = socket(AF_INET, SOCK_STREAM)
+
+            """get the host name, port, HTTP verb, and file name from the command line"""
+            try:
+                hostName = sys.argv[1]
+                port = int(sys.argv[2])
+                httpVerb = sys.argv[3]
+                fileName = sys.argv[4]
+            except IndexError:
+                print('Error: missing command line arguments')
+                sys.exit()
+
+            """create the request"""
+            request = f'{httpVerb} /{fileName} HTTP/1.1\r\n\r\n'
+            print(f'Request: {request.strip()}')
+
+            """connect to the server"""
+            clientSocket.connect((hostName, port))
+
+            """check the HTTP verb and send the request to the server"""
+            if httpVerb == 'GET':
+                """send the request to the server"""
+                clientSocket.send(request.encode())
+
+                """receive the response from the server"""
+                response = clientSocket.recv(10000).decode()
+
+                """check the response from the server"""
+                if response == 'HTTP/1.1 200 OK\r\n\r\n':
+                    print(f'Response: {response.strip()}')
+
+                    """split the file name into the file name and the file extension"""
+                    fileName = fileName.split('.')
+                    fileExtension = fileName[1]
+                    fileName = fileName[0]
+
+                    """create a new file name with a random number"""
+                    newServerFile = f'{fileName}({random.randint(0, 100000)}).{fileExtension}'
+
+                    """write the response file contents to the new file"""
+                    fileContents = clientSocket.recv(10000).decode()
+                    with open(newServerFile, 'w') as file: file.write(fileContents)
+
+                    """alert the client that the file has been created"""
+                    print(f'File created: {newServerFile}')
+                    clientSocket.close()
+                    sys.exit()
+
+                else:
+                    print(f'Error: {response}')
+                    clientSocket.close()
+                    sys.exit()
+
+            elif httpVerb == 'PUT':
+                """send the request to the server"""
+                clientSocket.send(request.encode())
+
+                """receive the response from the server"""
+                response = clientSocket.recv(10000).decode()
+
+                """check the response from the server"""
+                if response == 'HTTP/1.1 200 OK\r\n\r\n':
+                    print(f'Response: {response.strip()}')
+                    
+                    try:
+
+                        """check if the file exists"""
+                        if isfile(fileName):
+
+                            """send the file contents to the server"""
+                            with open(fileName, 'r') as file: fileContents = file.read()
+                            clientSocket.send(fileContents.encode())
+                            
+                            """alert the client that the file has been sent"""
+                            print(f'File sent: {fileName}')
+                            clientSocket.close()
+                            sys.exit()
+
+                        else:
+                            print(f'Error: {fileName} is not a file')
+                            clientSocket.close()
+                            sys.exit()
+
+                    except Exception as e:
+                        print(f'Error sending file to server: {e}')
+
+                else:
+                    print(f'Error: {response}')
+                    clientSocket.close()
+                    sys.exit()
+
+            else:
+                print(f'Error: HTTP verb {httpVerb} not supported')
+                clientSocket.close()
+                sys.exit()
+          </code>
+        </pre>  
+    </div>
+</body>
+</html>
